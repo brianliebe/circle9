@@ -282,12 +282,12 @@ export default function HomePage() {
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "100px",
+            width: "120px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
             fontSize: "1.2rem",
-            marginRight: "10px",
+            marginBottom: "5px",
           }}
           onClick={() => loadTodaysPuzzle("Easy")}
         >
@@ -301,16 +301,17 @@ export default function HomePage() {
             Easy
           </span>
         </button>
+        <br/>
         <button
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "100px",
+            width: "120px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
             fontSize: "1.2rem",
-            marginRight: "10px",
+            marginBottom: "5px",
           }}
           onClick={() => loadTodaysPuzzle("Medium")}
         >
@@ -324,16 +325,17 @@ export default function HomePage() {
             Medium
           </span>
         </button>
+        <br/>
         <button
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "100px",
+            width: "120px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
             fontSize: "1.2rem",
-            marginRight: "10px",
+            marginBottom: "5px",
           }}
           onClick={() => loadTodaysPuzzle("Hard")}
         >
@@ -347,11 +349,12 @@ export default function HomePage() {
             Hard
           </span>
         </button>
+        <br/>
         <button
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "100px",
+            width: "120px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
