@@ -178,8 +178,8 @@ export default function HomePage() {
               onChange={(e) => handleChange(rowIndex, colIndex, e.target.value)}
               onKeyDown={(e) => handleKeyDown(rowIndex, colIndex, e)}
               style={{
-                width: "50px",
-                height: "50px",
+                width: "40px",
+                height: "40px",
                 textAlign: "center",
                 fontSize: "20px",
                 border: "1px solid black",
