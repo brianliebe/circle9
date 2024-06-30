@@ -282,7 +282,7 @@ export default function HomePage() {
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "120px",
+            width: "150px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
@@ -306,7 +306,7 @@ export default function HomePage() {
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "120px",
+            width: "150px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
@@ -330,7 +330,7 @@ export default function HomePage() {
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "120px",
+            width: "150px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
@@ -354,7 +354,7 @@ export default function HomePage() {
           style={{
             border: "1px solid black",
             borderRadius: "6px",
-            width: "120px",
+            width: "150px",
             textAlign: "center",
             backgroundColor: "white",
             color: "black",
