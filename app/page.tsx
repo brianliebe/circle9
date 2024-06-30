@@ -2,88 +2,99 @@
 import { useEffect, useRef, useState } from "react";
 import { CellState, CellValue, hint, solve } from "./solve";
 import { Exo_2 } from "next/font/google";
+import { puzzles } from "./puzzles"
 
 const exo = Exo_2({ subsets: ["latin"] });
 
-const buildGrid = (grid: (number | null)[][]): CellValue[][] => {
-  return grid.map((row, rowIndex) =>
-    row.map((value: number | null, colIndex: number) => {
-      return {
-        value: value ? value.toString() : "",
-        state: "none",
-        row: rowIndex,
-        col: colIndex,
-        hint: false,
-      } as CellValue;
-    }),
-  );
+type Difficulty = "Easy" | "Medium" | "Hard" | "Very Hard"
+
+const buildGrid = (str: string | null): CellValue[][] => {
+  const grid: CellValue[][] = [];
+  if (str === null) {
+    for (let i = 0; i < 9; i++) {
+      const row: CellValue[] = []
+      for (let j = 0; j < 9; j++) {
+        row.push({
+          row: i,
+          col: j,
+          value: "",
+          hint: false,
+          state: "none"
+        })
+      }
+      grid.push(row)
+    }
+    return grid
+  }
+
+  for (let i = 0; i < 9; i++) {
+    let row = str.slice(i * 9, (i + 1) * 9).split('');
+    grid.push(row.map((c, j) => ({
+      row: i,
+      col: j,
+      value: c.replaceAll(".", ""),
+      hint: false,
+      state: "none"
+    })));
+  }
+  return grid
 };
 
-const easyGrid = [
-  [6, 5, null, null, 6, null, null, null, 9],
-  [null, null, null, 6, 2, null, null, null, 5],
-  [null, null, 7, null, null, null, 7, null, null],
-  [null, null, null, 6, null, 2, null, 9, null],
-  [3, 1, null, null, null, null, null, 6, 2],
-  [null, 6, null, 7, null, 8, null, null, null],
-  [null, null, 4, null, null, null, 4, null, null],
-  [6, null, null, null, 2, 6, null, null, null],
-  [6, null, null, null, 6, null, null, 3, 1],
-];
+const switchState = (state: CellState): CellState => {
+  switch (state) {
+    case "circled":
+      return "crossed";
+    case "crossed":
+      return "none";
+    case "none":
+      return "circled";
+  }
+};
 
-const mediumGrid = [
-  [null, null, 1, 1, null, 7, 8, null, null],
-  [null, 6, 3, null, null, null, 7, 4, null],
-  [3, null, null, null, 2, null, null, null, 1],
-  [6, 7, null, null, null, null, null, 4, 4],
-  [null, null, null, 6, null, 6, null, null, null],
-  [4, 7, null, null, null, null, null, 9, 9],
-  [8, null, null, null, 1, null, null, null, 2],
-  [null, 5, 6, null, null, null, 5, 8, null],
-  [null, null, 3, 3, null, 6, 9, null, null],
-];
+const cyrb53 = function(str: string, seed: number = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for(let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1  = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2  = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+};
 
-const hardGrid = [
-  [8, null, null, 4, null, 5, null, null, 2],
-  [1, 3, null, null, null, null, null, 6, 3],
-  [null, 5, null, 9, null, 2, null, 7, null],
-  [null, null, 4, null, null, null, 5, null, null],
-  [null, null, null, null, 1, null, null, null, null],
-  [null, null, 2, null, null, null, 5, null, null],
-  [null, 7, null, 3, null, 5, null, 7, null],
-  [5, 2, null, null, null, null, null, 3, 7],
-  [6, null, null, 5, null, 6, null, null, 9],
-];
+const hashAndSelectPuzzle = (dateString: string, category: string, puzzleIndex: number, puzzleList: string[]) => {
+  const s = `${dateString} ${category} ${puzzleIndex}`;
+  const h = cyrb53(s);
+  const i = h % puzzleList.length;
+  const p = puzzleList[i];
+  return p;
+};
 
-const veryHardGrid = [
-  [null, 9, null, 7, 7, null, null, null, null],
-  [null, 8, 6, null, null, null, null, 6, 9],
-  [null, null, 1, null, null, 3, 9, 6, null],
-  [null, null, 9, 4, null, 3, null, null, 4],
-  [2, null, null, null, null, null, null, null, 8],
-  [8, null, null, 4, null, 8, 6, null, null],
-  [null, 8, 1, 1, null, null, 1, null, null],
-  [4, 5, null, null, null, null, 6, 5, null],
-  [null, null, null, null, 7, 8, null, 3, null],
-];
+const dateToString = (date: Date) => {
+  const monthStrings = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  return `${monthStrings[date.getMonth()]}-${date.getDate().toString().padStart(2, "0")}-${date.getFullYear()}`;
+};
 
-const defaultGrid = veryHardGrid;
 
 export default function HomePage() {
-  const [grid, setGrid] = useState(buildGrid(defaultGrid));
+  const [grid, setGrid] = useState<CellValue[][]>(buildGrid(null));
   const [done, setDone] = useState(false);
+  const [todaysPuzzles, setTodaysPuzzles] = useState<{ grid: CellValue[][], difficulty: Difficulty }[]>([])
   const explanations = useRef<string[]>([]);
 
-  const switchState = (state: CellState): CellState => {
-    switch (state) {
-      case "circled":
-        return "crossed";
-      case "crossed":
-        return "none";
-      case "none":
-        return "circled";
-    }
-  };
+  useEffect(() => {
+    const todaysDate = dateToString(new Date())
+    const difficulties: Difficulty[] = ["Easy", "Medium", "Hard", "Very Hard"]
+    setTodaysPuzzles(difficulties.map((diff) => {
+      return {
+        grid: buildGrid(hashAndSelectPuzzle(todaysDate, diff, 0, puzzles[diff])),
+        difficulty: diff,
+      }
+    }))
+  }, [])
 
   const handleChange = (rowIndex: number, colIndex: number, value: string) => {
     const newGrid = grid.map((row, i) =>
@@ -143,10 +154,15 @@ export default function HomePage() {
   };
 
   const handleResetPressed = () => {
-    setGrid(buildGrid(defaultGrid));
+    setGrid(buildGrid(null));
     setDone(false);
     explanations.current = [];
   };
+
+  const loadTodaysPuzzle = (difficulty: Difficulty) => {
+    handleResetPressed();
+    setGrid(todaysPuzzles.find((p) => p.difficulty === difficulty)?.grid ?? buildGrid(null))
+  }
 
   return (
     <main className="main">
@@ -255,6 +271,102 @@ export default function HomePage() {
             }}
           >
             Reset
+          </span>
+        </button>
+      </div>
+      <div style={{ marginTop: "15px", textAlign: "center" }}>
+        <p>
+          Load a puzzle from today:
+        </p>
+        <button
+          style={{
+            border: "1px solid black",
+            borderRadius: "6px",
+            width: "100px",
+            textAlign: "center",
+            backgroundColor: "white",
+            color: "black",
+            fontSize: "1.2rem",
+            marginRight: "10px",
+          }}
+          onClick={() => loadTodaysPuzzle("Easy")}
+        >
+          <span
+            className={exo.className}
+            style={{
+              color: "black",
+              backgroundColor: "white",
+            }}
+          >
+            Easy
+          </span>
+        </button>
+        <button
+          style={{
+            border: "1px solid black",
+            borderRadius: "6px",
+            width: "100px",
+            textAlign: "center",
+            backgroundColor: "white",
+            color: "black",
+            fontSize: "1.2rem",
+            marginRight: "10px",
+          }}
+          onClick={() => loadTodaysPuzzle("Medium")}
+        >
+          <span
+            className={exo.className}
+            style={{
+              color: "black",
+              backgroundColor: "white",
+            }}
+          >
+            Medium
+          </span>
+        </button>
+        <button
+          style={{
+            border: "1px solid black",
+            borderRadius: "6px",
+            width: "100px",
+            textAlign: "center",
+            backgroundColor: "white",
+            color: "black",
+            fontSize: "1.2rem",
+            marginRight: "10px",
+          }}
+          onClick={() => loadTodaysPuzzle("Hard")}
+        >
+          <span
+            className={exo.className}
+            style={{
+              color: "black",
+              backgroundColor: "white",
+            }}
+          >
+            Hard
+          </span>
+        </button>
+        <button
+          style={{
+            border: "1px solid black",
+            borderRadius: "6px",
+            width: "100px",
+            textAlign: "center",
+            backgroundColor: "white",
+            color: "black",
+            fontSize: "1.2rem",
+          }}
+          onClick={() => loadTodaysPuzzle("Very Hard")}
+        >
+          <span
+            className={exo.className}
+            style={{
+              color: "black",
+              backgroundColor: "white",
+            }}
+          >
+            Very Hard
           </span>
         </button>
       </div>
