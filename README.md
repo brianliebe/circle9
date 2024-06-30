@@ -2,7 +2,7 @@
 React site to help with solving [Circle 9 Puzzles](https://circle9puzzle.com/circle9/). The app uses the [technique guide](https://circle9puzzle.com/circle9/techniques.html) to determine the next move.
 
 ### How it works
-1. Enter the values for the puzzle
+1. Enter the values for the puzzle (or load today's puzzles using the `Easy`, `Medium`, `Hard`, and `Very Hard` buttons)
 
 <img width="464" alt="image" src="https://github.com/brianliebe/circle9/assets/25470007/f99b8614-6022-4067-a523-e46c8ee63a5c">
   
