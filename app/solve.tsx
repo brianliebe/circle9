@@ -1,22 +1,9 @@
-export type CellState = "circled" | "crossed" | "none";
-
-export type CellValue = {
-  value: string;
-  state: CellState;
-  row: number;
-  col: number;
-  hint: boolean;
-};
-
-export type MoveResult = {
-  grid: CellValue[][];
-  explanation: string;
-};
+import { CellValue, MoveResult } from "./types";
 
 export function solve(grid: CellValue[][]): [CellValue[][], string[]] {
   grid.forEach((row) =>
     row.forEach((cell) => {
-      cell.hint = false;
+      cell.recent = false;
     }),
   );
 
@@ -61,7 +48,7 @@ export function solve(grid: CellValue[][]): [CellValue[][], string[]] {
       continue;
     }
 
-    const step6 = checkAllRowOrColumnCellsAreInSameblock(grid);
+    const step6 = checkAllRowOrColumnCellsAreInSameBlock(grid);
     if (step6 && gridChanged(step6.grid, grid)) {
       grid = step6.grid;
       explanations.push(step6.explanation);
@@ -90,6 +77,7 @@ export function solve(grid: CellValue[][]): [CellValue[][], string[]] {
     }
 
     if (checkDone(grid)) {
+      grid.forEach((r) => r.forEach((c) => (c.recent = false)));
       explanations.push("Done");
       return [grid, explanations];
     } else {
@@ -104,7 +92,7 @@ export function solve(grid: CellValue[][]): [CellValue[][], string[]] {
 export function hint(grid: CellValue[][]): [CellValue[][], string] {
   grid.forEach((row) =>
     row.forEach((cell) => {
-      cell.hint = false;
+      cell.recent = false;
     }),
   );
 
@@ -138,7 +126,7 @@ export function hint(grid: CellValue[][]): [CellValue[][], string] {
     return [step5.grid, step5.explanation];
   }
 
-  const step6 = checkAllRowOrColumnCellsAreInSameblock(grid);
+  const step6 = checkAllRowOrColumnCellsAreInSameBlock(grid);
   if (step6 && gridChanged(step6.grid, grid)) {
     return [step6.grid, step6.explanation];
   }
@@ -204,54 +192,60 @@ function checkDone(grid: CellValue[][]): boolean {
   return true;
 }
 
+/**
+ * Single candidate cell found in a group, circle the candidate
+ */
 function checkSingleCandidateForGroup(grid: CellValue[][]): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   // rows
   for (let i = 0; i < 9; i++) {
-    const totalCandidates = getCellsInRow(i, grid).filter(isCandidate);
-    if (totalCandidates.length === 1) {
-      totalCandidates[0].hint = true;
-      newCircled.push(totalCandidates[0]);
-      newCrossed.push(...getSeenCells(totalCandidates[0], grid));
+    const allCandidates = getCellsInRow(i, grid).filter(isCandidate);
+    if (allCandidates.length === 1) {
+      const cell = allCandidates[0];
+      const newCircled = [cell];
+      const newCrossed = [...getSeenCells(cell, grid)];
+      const newRelevant = [
+        ...getCellsInRow(i, grid),
+        ...getAllSeenCells(cell, grid),
+      ];
       return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single candidate (${totalCandidates[0].value}) in row ${
-          i + 1
-        }`,
+        grid: applyStates(newCircled, newCrossed, newRelevant, grid),
+        explanation: `Single candidate in ${toCodeGroup("Row", i + 1)}`,
       };
     }
   }
 
   // columns
   for (let j = 0; j < 9; j++) {
-    const totalCandidates = getCellsInColumn(j, grid).filter(isCandidate);
-    if (totalCandidates.length === 1) {
-      totalCandidates[0].hint = true;
-      newCircled.push(totalCandidates[0]);
-      newCrossed.push(...getSeenCells(totalCandidates[0], grid));
+    const allCandidates = getCellsInColumn(j, grid).filter(isCandidate);
+    if (allCandidates.length === 1) {
+      const cell = allCandidates[0];
+      const newCircled = [cell];
+      const newCrossed = [...getSeenCells(cell, grid)];
+      const newRelevant = [
+        ...getCellsInColumn(j, grid),
+        ...getAllSeenCells(cell, grid),
+      ];
       return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single candidate (${
-          totalCandidates[0].value
-        }) in column ${j + 1}`,
+        grid: applyStates(newCircled, newCrossed, newRelevant, grid),
+        explanation: `Single candidate in ${toCodeGroup("Column", j + 1)}`,
       };
     }
   }
 
   // blocks
   for (let b = 0; b < 9; b++) {
-    const totalCandidates = getCellsInBlock(b, grid).filter(isCandidate);
-    if (totalCandidates.length === 1) {
-      totalCandidates[0].hint = true;
-      newCircled.push(totalCandidates[0]);
-      newCrossed.push(...getSeenCells(totalCandidates[0], grid));
+    const allCandidates = getCellsInBlock(b, grid).filter(isCandidate);
+    if (allCandidates.length === 1) {
+      const cell = allCandidates[0];
+      const newCircled = [cell];
+      const newCrossed = [...getSeenCells(cell, grid)];
+      const newRelevant = [
+        ...getCellsInBlock(b, grid),
+        ...getAllSeenCells(cell, grid),
+      ];
       return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single candidate (${totalCandidates[0].value}) in block ${
-          b + 1
-        }`,
+        grid: applyStates(newCircled, newCrossed, newRelevant, grid),
+        explanation: `Single candidate in ${toCodeGroup("Block", b + 1)}`,
       };
     }
   }
@@ -259,22 +253,24 @@ function checkSingleCandidateForGroup(grid: CellValue[][]): MoveResult | null {
   return null;
 }
 
+/**
+ * Single candidate for a number, circle the candidate
+ */
 function checkSingleCandidateForNumber(grid: CellValue[][]): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   // values
   for (let v = 0; v < 9; v++) {
-    const totalCandidates = getCellsWithValue((v + 1).toString(), grid).filter(
-      isCandidate,
-    );
-    if (totalCandidates.length === 1) {
-      totalCandidates[0].hint = true;
-      newCircled.push(totalCandidates[0]);
-      newCrossed.push(...getSeenCells(totalCandidates[0], grid));
+    const value = (v + 1).toString();
+    const allCandidates = getCellsWithValue(value, grid).filter(isCandidate);
+    if (allCandidates.length === 1) {
+      const cell = allCandidates[0];
+      const newCircled = [cell];
+      const newCrossed = [...getSeenCells(cell, grid)];
+      const newRelevant = getAllSeenCells(cell, grid);
       return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single candidate for value (${totalCandidates[0].value})`,
+        grid: applyStates(newCircled, newCrossed, newRelevant, grid),
+        explanation: `Single candidate for ${toCodeValue(
+          cell.value,
+        )} in the puzzle`,
       };
     }
   }
@@ -282,10 +278,10 @@ function checkSingleCandidateForNumber(grid: CellValue[][]): MoveResult | null {
   return null;
 }
 
+/**
+ * Number found in only one group, eliminate all other cells in group
+ */
 function checkSingleGroupForNumber(grid: CellValue[][]): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   // rows
   const rowValues: string[][] = [];
   for (let i = 0; i < 9; i++) {
@@ -293,19 +289,26 @@ function checkSingleGroupForNumber(grid: CellValue[][]): MoveResult | null {
   }
   for (let i = 0; i < 9; i++) {
     const unique = rowValues[i].filter(
-      (v) =>
-        !rowValues.some((row, rowIndex) => i !== rowIndex && row.includes(v)),
+      (v) => !rowValues.some((row, idx) => i !== idx && row.includes(v)),
     );
-    if (unique.length > 0) {
-      newCrossed.push(
-        ...getCellsInRow(i, grid)
-          .filter(isCandidate)
-          .filter((cell) => cell.value !== unique[0]),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Unique value (${unique[0]}) in row ${i + 1}`,
-      };
+    for (let u = 0; u < unique.length; u++) {
+      const uniqueValue = unique[u];
+      const crossedCandidates = getCellsInRow(i, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.value !== uniqueValue);
+      const uniqueCandidates = getCellsInRow(i, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.value === uniqueValue);
+      if (crossedCandidates.length > 0) {
+        const newCrossed = [...crossedCandidates];
+        const newRelevant = [...uniqueCandidates, ...getCellsInRow(i, grid)];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Single group for ${toCodeValue(
+            unique[0],
+          )}, in ${toCodeGroup("Row", i + 1)}`,
+        };
+      }
     }
   }
 
@@ -318,19 +321,26 @@ function checkSingleGroupForNumber(grid: CellValue[][]): MoveResult | null {
   }
   for (let j = 0; j < 9; j++) {
     const unique = colValues[j].filter(
-      (v) =>
-        !colValues.some((col, colIndex) => j !== colIndex && col.includes(v)),
+      (v) => !colValues.some((col, idx) => j !== idx && col.includes(v)),
     );
-    if (unique.length > 0) {
-      newCrossed.push(
-        ...getCellsInColumn(j, grid)
-          .filter(isCandidate)
-          .filter((cell) => cell.value !== unique[0]),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Unique value (${unique[0]}) in column ${j + 1}`,
-      };
+    for (let u = 0; u < unique.length; u++) {
+      const uniqueValue = unique[u];
+      const crossedCandidates = getCellsInColumn(j, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.value !== uniqueValue);
+      const uniqueCandidates = getCellsInColumn(j, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.value === uniqueValue);
+      if (crossedCandidates.length > 0) {
+        const newCrossed = [...crossedCandidates];
+        const newRelevant = [...uniqueCandidates, ...getCellsInColumn(j, grid)];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Single group for ${toCodeValue(
+            unique[0],
+          )}, in ${toCodeGroup("Column", j + 1)}`,
+        };
+      }
     }
   }
 
@@ -343,44 +353,54 @@ function checkSingleGroupForNumber(grid: CellValue[][]): MoveResult | null {
   }
   for (let b = 0; b < 9; b++) {
     const unique = blockValues[b].filter(
-      (v) =>
-        !blockValues.some(
-          (block, blockIndex) => b !== blockIndex && block.includes(v),
-        ),
+      (v) => !blockValues.some((block, idx) => b !== idx && block.includes(v)),
     );
-    if (unique.length > 0) {
-      newCrossed.push(
-        ...getCellsInBlock(b, grid)
-          .filter(isCandidate)
-          .filter((cell) => cell.value !== unique[0]),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Unique value (${unique[0]}) in block ${b + 1}`,
-      };
+    for (let u = 0; u < unique.length; u++) {
+      const uniqueValue = unique[u];
+      const crossedCandidates = getCellsInBlock(b, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.value !== uniqueValue);
+      const uniqueCandidates = getCellsInBlock(b, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.value === uniqueValue);
+      if (crossedCandidates.length > 0) {
+        const newCrossed = [...crossedCandidates];
+        const newRelevant = [...uniqueCandidates, ...getCellsInBlock(b, grid)];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Single group for ${toCodeValue(
+            unique[0],
+          )}, in ${toCodeGroup("Block", b + 1)}`,
+        };
+      }
     }
   }
 
   return null;
 }
 
+/**
+ * Single number in a group, eliminate all other candidates with this number
+ */
 function checkSingleNumberInGroup(grid: CellValue[][]): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   // rows
   for (let i = 0; i < 9; i++) {
     const unique = getUniqueValues(getCellsInRow(i, grid).filter(isCandidate));
     if (unique.length === 1) {
-      newCrossed.push(
-        ...getCellsWithValue(unique[0], grid)
-          .filter(isCandidate)
-          .filter((cell) => cell.row !== i),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single value (${unique[0]}) in row ${i + 1}`,
-      };
+      const uniqueValue = unique[0];
+      const crossedCandidates = getCellsWithValue(uniqueValue, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.row !== i);
+      if (crossedCandidates.length > 0) {
+        const newRelevant = getCellsInRow(i, grid);
+        const newCrossed = [...crossedCandidates];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Only number ${toCodeValue(
+            uniqueValue,
+          )} in group ${toCodeGroup("Row", i + 1)}`,
+        };
+      }
     }
   }
 
@@ -390,15 +410,20 @@ function checkSingleNumberInGroup(grid: CellValue[][]): MoveResult | null {
       getCellsInColumn(j, grid).filter(isCandidate),
     );
     if (unique.length === 1) {
-      newCrossed.push(
-        ...getCellsWithValue(unique[0], grid)
-          .filter(isCandidate)
-          .filter((cell) => cell.col !== j),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single value (${unique[0]}) in column ${j + 1}`,
-      };
+      const uniqueValue = unique[0];
+      const crossedCandidates = getCellsWithValue(uniqueValue, grid)
+        .filter(isCandidate)
+        .filter((cell) => cell.col !== j);
+      if (crossedCandidates.length > 0) {
+        const newRelevant = getCellsInColumn(j, grid);
+        const newCrossed = [...crossedCandidates];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Only number ${toCodeValue(
+            uniqueValue,
+          )} in group ${toCodeGroup("Column", j + 1)}`,
+        };
+      }
     }
   }
 
@@ -408,106 +433,131 @@ function checkSingleNumberInGroup(grid: CellValue[][]): MoveResult | null {
       getCellsInBlock(b, grid).filter(isCandidate),
     );
     if (unique.length === 1) {
-      newCrossed.push(
-        ...getCellsWithValue(unique[0], grid)
-          .filter(isCandidate)
-          .filter((cell) => getblockIndex(cell) !== b),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `Single value (${unique[0]}) in block ${b + 1}`,
-      };
+      const uniqueValue = unique[0];
+      const crossedCandidates = getCellsWithValue(uniqueValue, grid)
+        .filter(isCandidate)
+        .filter((cell) => getBlockIndex(cell) !== b);
+      if (crossedCandidates.length > 0) {
+        const newRelevant = getCellsInBlock(b, grid);
+        const newCrossed = [...crossedCandidates];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Only number ${toCodeValue(
+            uniqueValue,
+          )} in group ${toCodeGroup("Block", b + 1)}`,
+        };
+      }
     }
   }
 
   return null;
 }
 
+/**
+ * All candidates in a block are in the same row or column, eliminate all other candidates
+ * in that row or column
+ */
 function checkAllBlockCellsAreInSameRowOrColumn(
   grid: CellValue[][],
 ): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   for (let b = 0; b < 9; b++) {
     const cells = getCellsInBlock(b, grid).filter(isCandidate);
 
     const rows = getUniqueRowIndexes(cells);
     if (rows.length === 1) {
-      newCrossed.push(
+      const newCrossed = [
         ...getCellsInRow(rows[0], grid)
           .filter(isCandidate)
-          .filter((cell) => getblockIndex(cell) !== b),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `All cells in block ${b + 1} are in the same row (${
-          rows[0] + 1
-        })`,
-      };
+          .filter((cell) => getBlockIndex(cell) !== b),
+      ];
+      if (newCrossed.length !== 0) {
+        const newRelevant = [
+          ...getCellsInBlock(b, grid),
+          ...getCellsInRow(rows[0], grid),
+        ];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `All cells in ${toCodeGroup(
+            "Block",
+            b + 1,
+          )} are in ${toCodeGroup("Row", rows[0] + 1)}`,
+        };
+      }
     }
 
     const cols = getUniqueColumnIndexes(cells);
     if (cols.length === 1) {
-      newCrossed.push(
+      const newCrossed = [
         ...getCellsInColumn(cols[0], grid)
           .filter(isCandidate)
-          .filter((cell) => getblockIndex(cell) !== b),
-      );
-      return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `All cells in block ${b + 1} are in the same column (${
-          cols[0] + 1
-        })`,
-      };
+          .filter((cell) => getBlockIndex(cell) !== b),
+      ];
+      if (newCrossed.length !== 0) {
+        const newRelevant = [
+          ...getCellsInBlock(b, grid),
+          ...getCellsInColumn(cols[0], grid),
+        ];
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `All cells in ${toCodeGroup(
+            "Block",
+            b + 1,
+          )} are in ${toCodeGroup("Column", cols[0] + 1)}`,
+        };
+      }
     }
   }
 
   return null;
 }
 
-function checkAllRowOrColumnCellsAreInSameblock(
+/**
+ * All candidates in a row or column are in the same block, eliminate all other candidates
+ * in that block
+ */
+function checkAllRowOrColumnCellsAreInSameBlock(
   grid: CellValue[][],
 ): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   // rows
   for (let i = 0; i < 9; i++) {
-    const blocks = getUniqueblockIndexes(
+    const blocks = getUniqueBlockIndexes(
       getCellsInRow(i, grid).filter(isCandidate),
     );
     if (blocks.length === 1) {
-      newCrossed.push(
+      const newCrossed = [
         ...getCellsInBlock(blocks[0], grid)
           .filter(isCandidate)
           .filter((cell) => cell.row !== i),
-      );
+      ];
+      const newRelevant = getCellsInRow(i, grid);
       return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `All row (${i + 1}) cells are in the same block (${
-          blocks[0] + 1
-        })`,
+        grid: applyStates([], newCrossed, newRelevant, grid),
+        explanation: `All candidates of ${toCodeGroup(
+          "Row",
+          i + 1,
+        )} are in the ${toCodeGroup("Block", blocks[0] + 1)}`,
       };
     }
   }
 
   // columns
   for (let j = 0; j < 9; j++) {
-    const blocks = getUniqueblockIndexes(
+    const blocks = getUniqueBlockIndexes(
       getCellsInColumn(j, grid).filter(isCandidate),
     );
     if (blocks.length === 1) {
-      newCrossed.push(
+      const newCrossed = [
         ...getCellsInBlock(blocks[0], grid)
           .filter(isCandidate)
           .filter((cell) => cell.col !== j),
-      );
+      ];
+      const newRelevant = getCellsInColumn(j, grid);
       return {
-        grid: applyStates(newCircled, newCrossed, grid),
-        explanation: `All column (${j + 1}) cells are in the same block (${
-          blocks[0] + 1
-        })`,
+        grid: applyStates([], newCrossed, newRelevant, grid),
+        explanation: `All candidates of ${toCodeGroup(
+          "Column",
+          j + 1,
+        )} are in the ${toCodeGroup("Block", blocks[0] + 1)}`,
       };
     }
   }
@@ -515,12 +565,12 @@ function checkAllRowOrColumnCellsAreInSameblock(
   return null;
 }
 
+/**
+ * Candidate seen by all candidates of a number, eliminate the candidate
+ */
 function checkCellSeesAllCandidatesOfNumber(
   grid: CellValue[][],
 ): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   for (let v = 0; v < 9; v++) {
     const candidates = getCellsWithValue((v + 1).toString(), grid).filter(
       isCandidate,
@@ -536,11 +586,15 @@ function checkCellSeesAllCandidatesOfNumber(
           ),
         ),
       );
-      if (matches.length > 0) {
-        newCrossed.push(...matches);
+      const uniqueMatches = getUniqueCells(matches);
+      if (uniqueMatches.length > 0) {
+        const newCrossed = [...uniqueMatches];
+        const newRelevant = [...candidates];
         return {
-          grid: applyStates(newCircled, newCrossed, grid),
-          explanation: `Cell(s) see all candidates of value (${v + 1})`,
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Candidate${
+            uniqueMatches.length > 1 ? "s" : ""
+          } seen by all candidates of ${toCodeValue(v + 1)}`,
         };
       }
     }
@@ -549,12 +603,12 @@ function checkCellSeesAllCandidatesOfNumber(
   return null;
 }
 
+/**
+ * Candidate seen by all candidates of a group, eliminate the candidate
+ */
 function checkCellSeesAllCandidatesOfGroup(
   grid: CellValue[][],
 ): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   // rows
   for (let i = 0; i < 9; i++) {
     const candidates = getCellsInRow(i, grid).filter(isCandidate);
@@ -569,11 +623,15 @@ function checkCellSeesAllCandidatesOfGroup(
           ),
         ),
       );
-      if (matches.length > 0) {
-        newCrossed.push(...matches);
+      const uniqueMatches = getUniqueCells(matches);
+      if (uniqueMatches.length > 0) {
+        const newCrossed = [...uniqueMatches];
+        const newRelevant = getCellsInRow(i, grid);
         return {
-          grid: applyStates(newCircled, newCrossed, grid),
-          explanation: `Cells see all candidates of row ${i + 1}`,
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Candidate${
+            uniqueMatches.length > 1 ? "s" : ""
+          } seen by all candidates of ${toCodeGroup("Row", i + 1)}`,
         };
       }
     }
@@ -593,11 +651,15 @@ function checkCellSeesAllCandidatesOfGroup(
           ),
         ),
       );
-      if (matches.length > 0) {
-        newCrossed.push(...matches);
+      const uniqueMatches = getUniqueCells(matches);
+      if (uniqueMatches.length > 0) {
+        const newCrossed = [...uniqueMatches];
+        const newRelevant = getCellsInColumn(j, grid);
         return {
-          grid: applyStates(newCircled, newCrossed, grid),
-          explanation: `Cells see all candidates of column ${j + 1}`,
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Candidate${
+            uniqueMatches.length > 1 ? "s" : ""
+          } seen by all candidates of ${toCodeGroup("Column", j + 1)}`,
         };
       }
     }
@@ -617,11 +679,15 @@ function checkCellSeesAllCandidatesOfGroup(
           ),
         ),
       );
-      if (matches.length > 0) {
-        newCrossed.push(...matches);
+      const uniqueMatches = getUniqueCells(matches);
+      if (uniqueMatches.length > 0) {
+        const newCrossed = [...uniqueMatches];
+        const newRelevant = getCellsInBlock(b, grid);
         return {
-          grid: applyStates(newCircled, newCrossed, grid),
-          explanation: `Cells see all candidates of block ${b + 1}`,
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Candidate${
+            uniqueMatches.length > 1 ? "s" : ""
+          } seen by all candidates of ${toCodeGroup("Block", b + 1)}`,
         };
       }
     }
@@ -630,53 +696,61 @@ function checkCellSeesAllCandidatesOfGroup(
   return null;
 }
 
+/**
+ * N groups contain the same N values without any overlap, eliminate all candidates
+ * with these values outside the groups
+ */
 function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
-  const newCircled: CellValue[] = [];
-  const newCrossed: CellValue[] = [];
-
   const groups: {
     id: string;
     cells: CellValue[];
     values: string[];
     possiblePairs: string[][];
+    groupCells: CellValue[];
   }[] = [];
 
   // rows
   for (let i = 0; i < 9; i++) {
-    const cells = getCellsInRow(i, grid).filter(isNotCrossed);
-    const uniqueValues = getUniqueValues(cells).sort();
+    const groupCells = getCellsInRow(i, grid);
+    const candidates = groupCells.filter(isNotCrossed);
+    const uniqueValues = getUniqueValues(candidates).sort();
     const possiblePairs = getPossiblePairs(uniqueValues);
     groups.push({
-      id: `row ${i + 1}`,
-      cells: cells,
+      id: toCodeGroup("Row", i + 1),
+      cells: candidates,
       values: uniqueValues,
       possiblePairs: possiblePairs,
+      groupCells: groupCells,
     });
   }
 
   // columns
   for (let j = 0; j < 9; j++) {
-    const cells = getCellsInColumn(j, grid).filter(isNotCrossed);
-    const uniqueValues = getUniqueValues(cells).sort();
+    const groupCells = getCellsInColumn(j, grid);
+    const candidates = groupCells.filter(isNotCrossed);
+    const uniqueValues = getUniqueValues(candidates).sort();
     const possiblePairs = getPossiblePairs(uniqueValues);
     groups.push({
-      id: `column ${j + 1}`,
-      cells: cells,
+      id: toCodeGroup("Column", j + 1),
+      cells: candidates,
       values: uniqueValues,
       possiblePairs: possiblePairs,
+      groupCells: groupCells,
     });
   }
 
   // blocks
   for (let b = 0; b < 9; b++) {
-    const cells = getCellsInBlock(b, grid).filter(isNotCrossed);
-    const uniqueValues = getUniqueValues(cells).sort();
+    const groupCells = getCellsInBlock(b, grid);
+    const candidates = groupCells.filter(isNotCrossed);
+    const uniqueValues = getUniqueValues(candidates).sort();
     const possiblePairs = getPossiblePairs(uniqueValues);
     groups.push({
-      id: `block ${b + 1}`,
-      cells: cells,
+      id: toCodeGroup("Block", b + 1),
+      cells: candidates,
       values: uniqueValues,
       possiblePairs: possiblePairs,
+      groupCells: groupCells,
     });
   }
 
@@ -726,13 +800,14 @@ function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
           );
         });
         if (valuesOutsidePairs.length > 0) {
-          const pairGroups = [group.id, ...matches.map((m) => m.id)];
-          newCrossed.push(...valuesOutsidePairs);
+          const newCrossed = [...valuesOutsidePairs];
+          const newRelevant = allGroups.map((g) => g.groupCells).flat();
+          const ids = allGroups.map((g) => g.id).sort();
           return {
-            grid: applyStates(newCircled, newCrossed, grid),
-            explanation: `Matching pairs ${group.values.join(
-              ", ",
-            )} for groups: ${pairGroups.join(", ")}`,
+            grid: applyStates([], newCrossed, newRelevant, grid),
+            explanation: `Matching pairs found ${toCodeValues(pair)} in ${
+              pair.length
+            } groups:<br/>${ids.join(", ")}`,
           };
         }
       }
@@ -747,26 +822,42 @@ function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
 function applyStates(
   circled: CellValue[],
   crossed: CellValue[],
+  relevant: CellValue[],
   grid: CellValue[][],
 ): CellValue[][] {
-  const gridCopy = JSON.parse(JSON.stringify(grid));
-  circled.forEach((cell) => (gridCopy[cell.row][cell.col].state = "circled"));
-  crossed.forEach((cell) => (gridCopy[cell.row][cell.col].state = "crossed"));
+  const gridCopy: CellValue[][] = JSON.parse(JSON.stringify(grid));
+  relevant.forEach((cell) => {
+    if (gridCopy[cell.row][cell.col].state === "none") {
+      gridCopy[cell.row][cell.col].recent = true;
+    }
+  });
+  circled.forEach((cell) => {
+    gridCopy[cell.row][cell.col].state = "circled";
+    gridCopy[cell.row][cell.col].recent = true;
+  });
+  crossed.forEach((cell) => {
+    gridCopy[cell.row][cell.col].state = "crossed";
+    gridCopy[cell.row][cell.col].recent = true;
+  });
   return gridCopy;
 }
 
-function getSeenCells(cell: CellValue, grid: CellValue[][]): CellValue[] {
+function getAllSeenCells(cell: CellValue, grid: CellValue[][]): CellValue[] {
   const colCells = getCellsInColumn(cell.col, grid);
   const rowCells = getCellsInRow(cell.row, grid);
-  const blockCells = getCellsInBlock(getblockIndex(cell), grid);
+  const blockCells = getCellsInBlock(getBlockIndex(cell), grid);
   const valueCells = getCellsWithValue(cell.value, grid);
 
-  return [...colCells, ...rowCells, ...blockCells, ...valueCells]
-    .filter(isCandidate)
-    .filter((x) => notMatch(x, cell));
+  return [...colCells, ...rowCells, ...blockCells, ...valueCells].filter((x) =>
+    notMatch(x, cell),
+  );
 }
 
-function getblockIndex(cell: CellValue): number {
+function getSeenCells(cell: CellValue, grid: CellValue[][]): CellValue[] {
+  return getAllSeenCells(cell, grid).filter(isCandidate);
+}
+
+function getBlockIndex(cell: CellValue): number {
   return Math.floor(cell.row / 3) * 3 + Math.floor(cell.col / 3);
 }
 
@@ -822,33 +913,35 @@ function getUniqueColumnIndexes(list: CellValue[]): number[] {
   return Array.from(new Set(list.map((cell) => cell.col)));
 }
 
-function getUniqueblockIndexes(list: CellValue[]): number[] {
-  return Array.from(new Set(list.map((cell) => getblockIndex(cell))));
+function getUniqueBlockIndexes(list: CellValue[]): number[] {
+  return Array.from(new Set(list.map((cell) => getBlockIndex(cell))));
 }
 
-function getPossiblePairs(list: string[]): string[][] {
-  const possiblePairs: string[][] = [list];
-  if (list.length !== 2 && list.length !== 3) {
-    return possiblePairs;
-  }
-  for (let a = 0; a < 9; a++) {
-    if (!list.includes((a + 1).toString())) {
-      // create list + n
-      const listA = [...list, (a + 1).toString()].sort();
-      possiblePairs.push(listA);
+function getUniqueCells(list: CellValue[]): CellValue[] {
+  const unique = new Map();
+  list.forEach((c) => unique.set(`${c.row}x${c.col}`, c));
+  return Array.from(unique.values());
+}
 
-      if (list.length === 2) {
-        for (let b = 0; b < 9; b++) {
-          if (!listA.includes((b + 1).toString())) {
-            // create list + n + m, for length 2 lists
-            const listB = [...listA, (b + 1).toString()].sort();
-            possiblePairs.push(listB);
-          }
+function getPossiblePairs(list: string[], maxLength = 5): string[][] {
+  const set = new Set<string>();
+
+  function permute(pair: number[]): void {
+    if (!set.has(pair.join(""))) {
+      set.add(pair.join(""));
+    }
+    if (pair.length < maxLength) {
+      for (let x = 0; x < 9; x++) {
+        if (!pair.includes(x + 1)) {
+          const newPair = [...pair, x + 1].sort();
+          permute(newPair);
         }
       }
     }
   }
-  return possiblePairs;
+
+  permute(list.map((c) => Number.parseInt(c)));
+  return [...set].sort().map((p) => p.split(""));
 }
 
 function isCandidate(cell: CellValue): boolean {
@@ -868,5 +961,23 @@ function notMatch(candidate: CellValue, cell: CellValue): boolean {
 }
 
 function gridChanged(gridA: CellValue[][], gridB: CellValue[][]): boolean {
-  return JSON.stringify(gridA) !== JSON.stringify(gridB);
+  const gridAStripped = gridA.map((r) =>
+    r.map((c) => ({ ...c, recent: false })),
+  );
+  const gridBStripped = gridB.map((r) =>
+    r.map((c) => ({ ...c, recent: false })),
+  );
+  return JSON.stringify(gridAStripped) !== JSON.stringify(gridBStripped);
+}
+
+function toCodeValue(val: string | number): string {
+  return `<code>#${val}</code>`;
+}
+
+function toCodeValues(vals: string[] | number[]): string {
+  return vals.map((v) => toCodeValue(v)).join(", ");
+}
+
+function toCodeGroup(str: string, index: number): string {
+  return `<code>${str} ${index}</code>`;
 }
