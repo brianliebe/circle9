@@ -46,7 +46,7 @@ export default function HomePage() {
     colIndex: number,
     e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    if (e.key === " ") {
+    if (e.key === " " || e.key === "0") {
       const cell = grid[rowIndex][colIndex];
       if (cell.value !== "") {
         cell.state = switchState(cell.state);
@@ -125,7 +125,9 @@ export default function HomePage() {
               id={`${rowIndex}-${colIndex}`}
               key={`${rowIndex}-${colIndex}`}
               className="no-scrollbar"
-              type="number"
+              type="text"
+              pattern="[1-9]*"
+              inputMode="numeric"
               value={cell.value}
               onChange={() => null}
               onKeyDown={(e) => handleKeyDown(rowIndex, colIndex, e)}
