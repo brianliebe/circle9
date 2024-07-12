@@ -1,4 +1,4 @@
-export type Difficulty = "Easy" | "Medium" | "Hard" | "Very Hard";
+export type Difficulty = "Intro" | "Standard" | "Advanced" | "Expert";
 
 export type CellState = "circled" | "crossed" | "none";
 

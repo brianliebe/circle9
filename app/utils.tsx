@@ -81,24 +81,3 @@ export const hashAndSelectPuzzle = (
   const p = puzzleList[i];
   return p;
 };
-
-export const dateToString = (date: Date) => {
-  const monthStrings = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
-  ];
-  return `${monthStrings[date.getMonth()]}-${date
-    .getDate()
-    .toString()
-    .padStart(2, "0")}-${date.getFullYear()}`;
-};

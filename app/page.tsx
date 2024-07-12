@@ -3,48 +3,43 @@ import { useEffect, useRef, useState } from "react";
 import { hint, solve } from "./solve";
 import { puzzles } from "./puzzles";
 import { CellValue, Difficulty, TodaysPuzzle } from "./types";
-import {
-  buildGrid,
-  dateToString,
-  exo,
-  hashAndSelectPuzzle,
-  switchState,
-} from "./utils";
+import { buildGrid, exo, hashAndSelectPuzzle, switchState } from "./utils";
 
 export default function HomePage() {
   const [grid, setGrid] = useState<CellValue[][]>(buildGrid(null));
   const [isDone, setIsDone] = useState(false);
   const [todaysPuzzles, setTodaysPuzzles] = useState<TodaysPuzzle[]>([]);
+  const [category, setCategory] = useState("Daily");
 
   const explanations = useRef<string[]>([]);
 
   useEffect(() => {
-    const todaysDate = dateToString(new Date());
-    const difficulties: Difficulty[] = ["Easy", "Medium", "Hard", "Very Hard"];
+    const date = new Date();
+    const todaysDate = `${date.getDate()} ${
+      date.getMonth() + 1
+    } ${date.getFullYear()}`;
+    const difficulties: Difficulty[] = [
+      "Intro",
+      "Standard",
+      "Advanced",
+      "Expert",
+    ];
     setTodaysPuzzles(
       difficulties.map((diff) => {
         return {
           grid: buildGrid(
-            hashAndSelectPuzzle(todaysDate, diff, 0, puzzles[diff]),
+            hashAndSelectPuzzle(
+              todaysDate,
+              `${diff} ${category}`,
+              0,
+              puzzles[diff],
+            ),
           ),
           difficulty: diff,
         };
       }),
     );
-  }, []);
-
-  const handleChangeToGrid = (
-    rowIndex: number,
-    colIndex: number,
-    value: string,
-  ) => {
-    const newGrid = grid.map((row, i) =>
-      row.map((cell: CellValue, j: number) =>
-        i === rowIndex && j === colIndex ? { ...cell, value } : cell,
-      ),
-    );
-    setGrid(newGrid);
-  };
+  }, [category]);
 
   const handleKeyDown = (
     rowIndex: number,
@@ -64,6 +59,7 @@ export default function HomePage() {
       setGrid([...grid]);
     } else if (e.key === "Backspace") {
       const cell = grid[rowIndex][colIndex];
+      cell.value = "";
       cell.state = "none";
       setGrid([...grid]);
     } else {
@@ -107,6 +103,7 @@ export default function HomePage() {
     setGrid(buildGrid(null));
     setIsDone(false);
     explanations.current = [];
+    setCategory("Daily");
   };
 
   const loadTodaysPuzzle = (difficulty: Difficulty) => {
@@ -125,12 +122,10 @@ export default function HomePage() {
             <input
               id={`${rowIndex}-${colIndex}`}
               key={`${rowIndex}-${colIndex}`}
-              type="text"
+              className="no-scrollbar"
+              type="number"
               value={cell.value}
-              maxLength={1}
-              onChange={(e) =>
-                handleChangeToGrid(rowIndex, colIndex, e.target.value)
-              }
+              onChange={() => null}
               onKeyDown={(e) => handleKeyDown(rowIndex, colIndex, e)}
               style={{
                 width: "40px",
@@ -182,32 +177,53 @@ export default function HomePage() {
       </div>
       <div style={{ marginTop: "15px", textAlign: "center" }}>
         <p>Load today's puzzles:</p>
+        <div style={{ marginBottom: "10px" }}>
+          <label>
+            <input
+              type="radio"
+              value="Daily"
+              checked={category === "Daily"}
+              onChange={() => setCategory("Daily")}
+            />
+            Daily
+          </label>
+          &nbsp; &nbsp;
+          <label>
+            <input
+              type="radio"
+              value="Plus"
+              checked={category === "Plus"}
+              onChange={() => setCategory("Plus")}
+            />
+            Plus
+          </label>
+        </div>
         <button
           className="difficulty-button"
-          onClick={() => loadTodaysPuzzle("Easy")}
+          onClick={() => loadTodaysPuzzle("Intro")}
         >
-          <span className={`${exo.className} button-text`}>Easy</span>
+          <span className={`${exo.className} button-text`}>Intro</span>
         </button>
         <br />
         <button
           className="difficulty-button"
-          onClick={() => loadTodaysPuzzle("Medium")}
+          onClick={() => loadTodaysPuzzle("Standard")}
         >
-          <span className={`${exo.className} button-text`}>Medium</span>
+          <span className={`${exo.className} button-text`}>Standard</span>
         </button>
         <br />
         <button
           className="difficulty-button"
-          onClick={() => loadTodaysPuzzle("Hard")}
+          onClick={() => loadTodaysPuzzle("Advanced")}
         >
-          <span className={`${exo.className} button-text`}>Hard</span>
+          <span className={`${exo.className} button-text`}>Advanced</span>
         </button>
         <br />
         <button
           className="difficulty-button"
-          onClick={() => loadTodaysPuzzle("Very Hard")}
+          onClick={() => loadTodaysPuzzle("Expert")}
         >
-          <span className={`${exo.className} button-text`}>Very Hard</span>
+          <span className={`${exo.className} button-text`}>Expert</span>
         </button>
       </div>
       <div

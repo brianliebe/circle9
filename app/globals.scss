@@ -92,3 +92,12 @@ code {
   color: black;
   background-color: white;
 }
+
+.no-scrollbar::-webkit-outer-spin-button,
+.no-scrollbar::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-scrollbar {
+  -moz-appearance: textfield; /* Firefox */
+}
