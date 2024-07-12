@@ -107,11 +107,13 @@ export default function HomePage() {
   };
 
   const loadTodaysPuzzle = (difficulty: Difficulty) => {
-    handleResetPressed();
-    setGrid(
+    setGrid(buildGrid(null));
+    setIsDone(false);
+    explanations.current = [];
+    const newPuzzle =
       todaysPuzzles.find((p) => p.difficulty === difficulty)?.grid ??
-        buildGrid(null),
-    );
+      buildGrid(null);
+    setGrid(JSON.parse(JSON.stringify(newPuzzle)));
   };
 
   return (
