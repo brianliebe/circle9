@@ -26,9 +26,9 @@ export type MatchGroup = {
   values: string[];
   possiblePairs: string[][];
   groupCells: CellValue[];
-}
+};
 
 export type MatchGroupCombo = {
   pair: string[];
   groups: MatchGroup[][];
-}
+};

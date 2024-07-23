@@ -83,7 +83,7 @@ export default function HomePage() {
 
     // force loading icon
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     const [newGrid, reasons] = await solve(grid);
     setGrid([...newGrid]);
@@ -237,7 +237,9 @@ export default function HomePage() {
           <span className={`${exo.className} button-text`}>Expert</span>
         </button>
       </div>
-      {isLoading && <div className="loader" style={{ marginTop: "10px" }}></div>}
+      {isLoading && (
+        <div className="loader" style={{ marginTop: "10px" }}></div>
+      )}
       <div
         style={{
           marginTop: "10px",

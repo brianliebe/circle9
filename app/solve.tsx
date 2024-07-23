@@ -1,6 +1,8 @@
 import { CellValue, MatchGroup, MatchGroupCombo, MoveResult } from "./types";
 
-export async function solve(grid: CellValue[][]): Promise<[CellValue[][], string[]]> {
+export async function solve(
+  grid: CellValue[][],
+): Promise<[CellValue[][], string[]]> {
   grid.forEach((row) =>
     row.forEach((cell) => {
       cell.recent = false;
@@ -748,7 +750,7 @@ function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
     });
   }
 
-  const combos: MatchGroupCombo[] = []
+  const combos: MatchGroupCombo[] = [];
 
   for (let g = 0; g < groups.length; g++) {
     const group = groups[g];
@@ -769,18 +771,21 @@ function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
           ),
       );
 
-      const groupCombos = getCombinations([group, ...matches], pair.length)
-      combos.push({ pair: pair, groups: groupCombos});
+      const groupCombos = getCombinations([group, ...matches], pair.length);
+      combos.push({ pair: pair, groups: groupCombos });
     }
   }
 
-  combos.sort((a, b) => a.pair.length - b.pair.length)
+  combos.sort((a, b) => a.pair.length - b.pair.length);
 
   for (let c = 0; c < combos.length; c++) {
     const combo = combos[c];
     for (let cg = 0; cg < combo.groups.length; cg++) {
-      const comboGroup = combo.groups[cg]
-      if (isReusingValue(comboGroup) || combo.pair.length !== comboGroup.length) {
+      const comboGroup = combo.groups[cg];
+      if (
+        isReusingValue(comboGroup) ||
+        combo.pair.length !== comboGroup.length
+      ) {
         continue;
       }
 
