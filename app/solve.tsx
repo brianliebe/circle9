@@ -1,6 +1,6 @@
-import { CellValue, MoveResult } from "./types";
+import { CellValue, MatchGroup, MatchGroupCombo, MoveResult } from "./types";
 
-export function solve(grid: CellValue[][]): [CellValue[][], string[]] {
+export async function solve(grid: CellValue[][]): Promise<[CellValue[][], string[]]> {
   grid.forEach((row) =>
     row.forEach((cell) => {
       cell.recent = false;
@@ -701,13 +701,7 @@ function checkCellSeesAllCandidatesOfGroup(
  * with these values outside the groups
  */
 function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
-  const groups: {
-    id: string;
-    cells: CellValue[];
-    values: string[];
-    possiblePairs: string[][];
-    groupCells: CellValue[];
-  }[] = [];
+  const groups: MatchGroup[] = [];
 
   // rows
   for (let i = 0; i < 9; i++) {
@@ -754,6 +748,8 @@ function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
     });
   }
 
+  const combos: MatchGroupCombo[] = []
+
   for (let g = 0; g < groups.length; g++) {
     const group = groups[g];
     for (let pp = 0; pp < group.possiblePairs.length; pp++) {
@@ -772,44 +768,48 @@ function checkMatchingPairs(grid: CellValue[][]): MoveResult | null {
               ),
           ),
       );
-      const allGroups = [group, ...matches];
-      const reusingValue = allGroups.some((gr, i) =>
-        allGroups.some(
-          (ogr, j) =>
-            i !== j &&
-            gr.cells.some((gc) =>
-              ogr.cells.some((ogc) => ogc.col === gc.col && ogc.row === gc.row),
-            ),
-        ),
-      );
 
-      if (!reusingValue && pair.length === matches.length + 1) {
-        const valuesOutsidePairs: CellValue[] = [];
-        pair.forEach((p) => {
-          valuesOutsidePairs.push(
-            ...getCellsWithValue(p, grid)
-              .filter(isCandidate)
-              .filter(
-                (cell) =>
-                  !allGroups.some((gr) =>
-                    gr.cells.some(
-                      (c) => cell.col === c.col && cell.row === c.row,
-                    ),
+      const groupCombos = getCombinations([group, ...matches], pair.length)
+      combos.push({ pair: pair, groups: groupCombos});
+    }
+  }
+
+  combos.sort((a, b) => a.pair.length - b.pair.length)
+
+  for (let c = 0; c < combos.length; c++) {
+    const combo = combos[c];
+    for (let cg = 0; cg < combo.groups.length; cg++) {
+      const comboGroup = combo.groups[cg]
+      if (isReusingValue(comboGroup) || combo.pair.length !== comboGroup.length) {
+        continue;
+      }
+
+      const valuesOutsidePairs: CellValue[] = [];
+      combo.pair.forEach((p) => {
+        valuesOutsidePairs.push(
+          ...getCellsWithValue(p, grid)
+            .filter(isCandidate)
+            .filter(
+              (cell) =>
+                !comboGroup.some((gr) =>
+                  gr.cells.some(
+                    (c) => cell.col === c.col && cell.row === c.row,
                   ),
-              ),
-          );
-        });
-        if (valuesOutsidePairs.length > 0) {
-          const newCrossed = [...valuesOutsidePairs];
-          const newRelevant = allGroups.map((g) => g.groupCells).flat();
-          const ids = allGroups.map((g) => g.id).sort();
-          return {
-            grid: applyStates([], newCrossed, newRelevant, grid),
-            explanation: `Matching pairs found ${toCodeValues(pair)} in ${
-              pair.length
-            } groups:<br/>${ids.join(", ")}`,
-          };
-        }
+                ),
+            ),
+        );
+      });
+
+      if (valuesOutsidePairs.length > 0) {
+        const newCrossed = [...valuesOutsidePairs];
+        const newRelevant = comboGroup.map((g) => g.groupCells).flat();
+        const ids = comboGroup.map((g) => g.id).sort();
+        return {
+          grid: applyStates([], newCrossed, newRelevant, grid),
+          explanation: `Matching pairs found ${toCodeValues(combo.pair)} in ${
+            combo.pair.length
+          } groups:<br/>${ids.join(", ")}`,
+        };
       }
     }
   }
@@ -980,4 +980,33 @@ function toCodeValues(vals: string[] | number[]): string {
 
 function toCodeGroup(str: string, index: number): string {
   return `<code>${str} ${index}</code>`;
+}
+
+function getCombinations(arr: MatchGroup[], k: number) {
+  let result: MatchGroup[][] = [];
+  function combine(start: number, combo: MatchGroup[]) {
+    if (combo.length === k) {
+      result.push([...combo]);
+      return;
+    }
+    for (let i = start; i < arr.length; i++) {
+      combo.push(arr[i]);
+      combine(i + 1, combo);
+      combo.pop();
+    }
+  }
+  combine(0, []);
+  return result;
+}
+
+function isReusingValue(combo: MatchGroup[]): boolean {
+  return combo.some((gr, i) =>
+    combo.some(
+      (ogr, j) =>
+        i !== j &&
+        gr.cells.some((gc) =>
+          ogr.cells.some((ogc) => ogc.col === gc.col && ogc.row === gc.row),
+        ),
+    ),
+  );
 }

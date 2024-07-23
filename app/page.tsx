@@ -8,6 +8,7 @@ import { buildGrid, exo, hashAndSelectPuzzle, switchState } from "./utils";
 export default function HomePage() {
   const [grid, setGrid] = useState<CellValue[][]>(buildGrid(null));
   const [isDone, setIsDone] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [todaysPuzzles, setTodaysPuzzles] = useState<TodaysPuzzle[]>([]);
   const [category, setCategory] = useState("Daily");
 
@@ -75,16 +76,22 @@ export default function HomePage() {
     return nonEmpty.length === 0;
   };
 
-  const handleSolvePressed = () => {
+  const handleSolvePressed = async () => {
     if (checkEmpty()) {
       return;
     }
-    const [newGrid, reasons] = solve(grid);
+
+    // force loading icon
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const [newGrid, reasons] = await solve(grid);
     setGrid([...newGrid]);
     explanations.current.push(...reasons);
     if (reasons[reasons.length - 1] === "Done") {
       setIsDone(true);
     }
+    setIsLoading(false);
   };
 
   const handleHintPressed = () => {
@@ -230,6 +237,7 @@ export default function HomePage() {
           <span className={`${exo.className} button-text`}>Expert</span>
         </button>
       </div>
+      {isLoading && <div className="loader" style={{ marginTop: "10px" }}></div>}
       <div
         style={{
           marginTop: "10px",
