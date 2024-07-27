@@ -74,10 +74,26 @@ export const hashAndSelectPuzzle = (
   category: string,
   puzzleIndex: number,
   puzzleList: string[],
-) => {
+): string => {
   const s = `${dateString} ${category} ${puzzleIndex}`;
   const h = cyrb53(s);
   const i = h % puzzleList.length;
   const p = puzzleList[i];
   return p;
+};
+
+export const getDateString = (date: Date): string => {
+  return `${date.getDate()} ${date.getMonth() + 1} ${date.getFullYear()}`;
+};
+
+export const getDatePickerString = (date: Date): string => {
+  const year = date.toLocaleString(undefined, { year: "numeric" });
+  const month = date.toLocaleString(undefined, { month: "2-digit" });
+  const day = date.toLocaleString(undefined, { day: "2-digit" });
+  return `${year}-${month}-${day}`;
+};
+
+export const fromDatePickerString = (dateStr: string): string => {
+  const [year, month, day] = dateStr.split("-");
+  return `${month}/${day}/${year}`;
 };

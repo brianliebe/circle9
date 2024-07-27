@@ -2,35 +2,50 @@
 import { useEffect, useRef, useState } from "react";
 import { hint, solve } from "./solve";
 import { puzzles } from "./puzzles";
-import { CellValue, Difficulty, TodaysPuzzle } from "./types";
-import { buildGrid, exo, hashAndSelectPuzzle, switchState } from "./utils";
+import { CellValue, Difficulty, Circle9Puzzle } from "./types";
+import {
+  buildGrid,
+  exo,
+  fromDatePickerString,
+  getDatePickerString,
+  getDateString,
+  hashAndSelectPuzzle,
+  switchState,
+} from "./utils";
+import { Locked, Unlocked } from "@carbon/icons-react";
 
 export default function HomePage() {
   const [grid, setGrid] = useState<CellValue[][]>(buildGrid(null));
   const [isDone, setIsDone] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [todaysPuzzles, setTodaysPuzzles] = useState<TodaysPuzzle[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
+
+  const [dailyPuzzles, setDailyPuzzles] = useState<Circle9Puzzle[]>([]);
   const [category, setCategory] = useState("Daily");
+  const [puzzleDateType, setPuzzleDateType] = useState("Today");
+  const [puzzleDate, setPuzzleDate] = useState(getDatePickerString(new Date()));
 
   const explanations = useRef<string[]>([]);
 
   useEffect(() => {
-    const date = new Date();
-    const todaysDate = `${date.getDate()} ${
-      date.getMonth() + 1
-    } ${date.getFullYear()}`;
+    let puzzleDateStr: string;
+    if (puzzleDateType === "Today") {
+      puzzleDateStr = getDateString(new Date());
+    } else {
+      puzzleDateStr = getDateString(new Date(fromDatePickerString(puzzleDate)));
+    }
     const difficulties: Difficulty[] = [
       "Intro",
       "Standard",
       "Advanced",
       "Expert",
     ];
-    setTodaysPuzzles(
+    setDailyPuzzles(
       difficulties.map((diff) => {
         return {
           grid: buildGrid(
             hashAndSelectPuzzle(
-              todaysDate,
+              puzzleDateStr,
               `${diff} ${category}`,
               0,
               puzzles[diff],
@@ -40,7 +55,7 @@ export default function HomePage() {
         };
       }),
     );
-  }, [category]);
+  }, [category, puzzleDateType, puzzleDate]);
 
   const handleKeyDown = (
     rowIndex: number,
@@ -68,6 +83,21 @@ export default function HomePage() {
     }
   };
 
+  const handleCellClick = (
+    rowIndex: number,
+    colIndex: number,
+    e: React.MouseEvent<HTMLInputElement>,
+  ) => {
+    if (isLocked) {
+      const cell = grid[rowIndex][colIndex];
+      if (cell.value !== "") {
+        cell.state = switchState(cell.state);
+        setGrid([...grid]);
+      }
+      e.preventDefault();
+    }
+  };
+
   const checkEmpty = () => {
     const nonEmpty = grid
       .map((r) => r)
@@ -83,7 +113,10 @@ export default function HomePage() {
 
     // force loading icon
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
 
     const [newGrid, reasons] = await solve(grid);
     setGrid([...newGrid]);
@@ -111,14 +144,16 @@ export default function HomePage() {
     setIsDone(false);
     explanations.current = [];
     setCategory("Daily");
+    setIsLocked(false);
   };
 
   const loadTodaysPuzzle = (difficulty: Difficulty) => {
+    setIsLocked(true);
     setGrid(buildGrid(null));
     setIsDone(false);
     explanations.current = [];
     const newPuzzle =
-      todaysPuzzles.find((p) => p.difficulty === difficulty)?.grid ??
+      dailyPuzzles.find((p) => p.difficulty === difficulty)?.grid ??
       buildGrid(null);
     setGrid(JSON.parse(JSON.stringify(newPuzzle)));
   };
@@ -138,6 +173,7 @@ export default function HomePage() {
               value={cell.value}
               onChange={() => null}
               onKeyDown={(e) => handleKeyDown(rowIndex, colIndex, e)}
+              onMouseDown={(e) => handleCellClick(rowIndex, colIndex, e)}
               style={{
                 width: "40px",
                 height: "40px",
@@ -185,10 +221,56 @@ export default function HomePage() {
         <button className="action-button" onClick={handleResetPressed}>
           <span className={`${exo.className} button-text`}>Reset</span>
         </button>
+        <button
+          className="action-button"
+          style={{ width: "30px" }}
+          onClick={() => setIsLocked((prev) => !prev)}
+        >
+          {isLocked ? (
+            <Locked style={{ fill: "black", backgroundColor: "white" }} />
+          ) : (
+            <Unlocked style={{ fill: "black", backgroundColor: "white" }} />
+          )}
+        </button>
       </div>
       <div style={{ marginTop: "15px", textAlign: "center" }}>
-        <p>Load today's puzzles:</p>
-        <div style={{ marginBottom: "10px" }}>
+        <div>
+          <label>
+            <input
+              type="radio"
+              value="Today"
+              checked={puzzleDateType === "Today"}
+              onChange={() => setPuzzleDateType("Today")}
+            />
+            Today
+          </label>
+          &nbsp; &nbsp;
+          <label>
+            <input
+              type="radio"
+              value="Other"
+              checked={puzzleDateType === "Other"}
+              onChange={() => setPuzzleDateType("Other")}
+            />
+            Other
+          </label>
+          {puzzleDateType === "Other" && (
+            <>
+              <br />
+              <input
+                type="date"
+                value={puzzleDate}
+                onChange={(x) => setPuzzleDate(x.target.value)}
+                style={{
+                  marginTop: "5px",
+                  borderRadius: "5px",
+                  padding: "5px",
+                }}
+              />
+            </>
+          )}
+        </div>
+        <div style={{ marginTop: "10px", marginBottom: "10px" }}>
           <label>
             <input
               type="radio"

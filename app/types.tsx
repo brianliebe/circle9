@@ -15,7 +15,7 @@ export type MoveResult = {
   explanation: string;
 };
 
-export type TodaysPuzzle = {
+export type Circle9Puzzle = {
   grid: CellValue[][];
   difficulty: Difficulty;
 };
