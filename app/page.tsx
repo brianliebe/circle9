@@ -144,6 +144,7 @@ export default function HomePage() {
     setIsDone(false);
     explanations.current = [];
     setCategory("Daily");
+    setPuzzleDateType("Today");
     setIsLocked(false);
   };
 
@@ -223,7 +224,7 @@ export default function HomePage() {
         </button>
         <button
           className="action-button"
-          style={{ width: "30px" }}
+          style={{ width: "auto" }}
           onClick={() => setIsLocked((prev) => !prev)}
         >
           {isLocked ? (
