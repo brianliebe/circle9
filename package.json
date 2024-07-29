@@ -9,22 +9,22 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "14.0.4",
-    "react": "^18",
-    "react-dom": "^18"
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@carbon/icons-react": "^11.33.0",
-    "@carbon/react": "^1.46.1",
-    "@carbon/themes": "^11.28.0",
-    "@carbon/type": "^11.25.0",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.0.4",
-    "prettier": "^3.1.1",
-    "sass": "^1.69.5",
-    "typescript": "^5"
+    "@carbon/icons-react": "^11.45.0",
+    "@carbon/react": "^1.62.1",
+    "@carbon/themes": "^11.37.0",
+    "@carbon/type": "^11.28.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "prettier": "^3.3.3",
+    "sass": "^1.77.8",
+    "typescript": "^5.5.4"
   }
 }
