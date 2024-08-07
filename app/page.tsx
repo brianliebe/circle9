@@ -24,6 +24,7 @@ export default function HomePage() {
   const [category, setCategory] = useState("Daily");
   const [puzzleDateType, setPuzzleDateType] = useState("Today");
   const [puzzleDate, setPuzzleDate] = useState(getDatePickerString(new Date()));
+  const [puzzleNumber, setPuzzleNumber] = useState(0);
 
   const explanations = useRef<string[]>([]);
 
@@ -47,7 +48,7 @@ export default function HomePage() {
             hashAndSelectPuzzle(
               puzzleDateStr,
               `${diff} ${category}`,
-              0,
+              puzzleNumber,
               puzzles[diff],
             ),
           ),
@@ -55,7 +56,7 @@ export default function HomePage() {
         };
       }),
     );
-  }, [category, puzzleDateType, puzzleDate]);
+  }, [category, puzzleDateType, puzzleDate, puzzleNumber]);
 
   const handleKeyDown = (
     rowIndex: number,
@@ -145,6 +146,7 @@ export default function HomePage() {
     explanations.current = [];
     setCategory("Daily");
     setPuzzleDateType("Today");
+    setPuzzleNumber(0);
     setIsLocked(false);
   };
 
@@ -291,6 +293,28 @@ export default function HomePage() {
             />
             Plus
           </label>
+          {category === "Plus" && (
+            <div style={{ alignItems: "center", marginTop: "3px" }}>
+              <span>Puzzle #</span>
+              <div style={{ padding: "3px" }}>
+                <button
+                  style={{ border: "1px solid white", borderRadius: "5px" }}
+                  onClick={() => setPuzzleNumber(Math.max(puzzleNumber - 1, 0))}
+                >
+                  -
+                </button>
+                <span style={{ padding: "0px 10px" }}>{puzzleNumber}</span>
+                <button
+                  style={{ border: "1px solid white", borderRadius: "5px" }}
+                  onClick={() =>
+                    setPuzzleNumber(Math.min(puzzleNumber + 1, 99))
+                  }
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <button
           className="difficulty-button"
